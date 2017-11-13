@@ -98,12 +98,12 @@ for time in np.arange(#let me decide later):
 	ffloor=open("bolsigplus032016-linux/floor.txt")
 	with open("bolsigplus032016-linux/input.txt", "w") as f1:
 		for line in froof:
-        f1.write(line)
-    froof.close()
-    np.savetxt(f1, efield)
-    for line in ffloor:
-        f1.write(line)
-	ffloor.close()
+			f1.write(line)
+		froof.close()
+		np.savetxt(f1, efield)
+		for line in ffloor:
+			f1.write(line)
+		ffloor.close()
 	#execute bolsig+ software
 	os.system("./bolsigplus032016-linux/bolsigminus bolsigplus032016-linux/input.txt")
 	#import necessary parameters from bolsig output file
