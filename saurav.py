@@ -121,4 +121,4 @@ for time in np.arange(#let me decide later):
 
 	#charge accumulation at surface of dielectric
 	#---------------------------------------------------------------------------------------------------
-#end forr
+#end for
