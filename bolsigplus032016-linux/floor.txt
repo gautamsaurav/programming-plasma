@@ -1,0 +1,11 @@
+
+SAVERESULTS
+'bolsigplus032016-linux/output.txt'        / File 
+3        / Format: 1=Run by run; 2=Combined; 3=E/N; 4=Energy; 5=SIGLO; 6=PLASIMO
+1        / Conditions: 0=No; 1=Yes
+1        / Transport coefficients: 0=No; 1=Yes
+1        / Rate coefficients: 0=No; 1=Yes
+1        / Reverse rate coefficients: 0=No; 1=Yes
+1        / Energy loss coefficients: 0=No; 1=Yes
+1        / Distribution function: 0=No; 1=Yes 
+1        / Skip failed runs: 0=No; 1=Yes

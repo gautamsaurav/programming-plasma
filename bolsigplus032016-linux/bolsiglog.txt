@@ -1,0 +1,44 @@
+BOLSIG+ script file: input.txt
+READCOLLISIONS
+N2
+LXCat-June2013.txt
+How to reference in publications:
+1) A.V. Phelps and L.C. Pitchford, Phys. Rev. A 31, 2932 (1985)
+2) SIGLO database, http://www.lxcat.laplace.univ-tlse.fr, retrieved June 4, 2013
+C1    N2    Elastic                                             
+C2    N2    Excitation    0.020 eV                              
+C3    N2    Excitation    0.29 eV                               
+C4    N2    Excitation    0.29 eV                               
+C5    N2    Excitation    0.59 eV                               
+C6    N2    Excitation    0.88 eV                               
+C7    N2    Excitation    1.17 eV                               
+C8    N2    Excitation    1.47 eV                               
+C9    N2    Excitation    1.76 eV                               
+C10   N2    Excitation    2.06 eV                               
+C11   N2    Excitation    2.35 eV                               
+C12   N2    Excitation    6.17 eV                               
+C13   N2    Excitation    7.00 eV                               
+C14   N2    Excitation    7.35 eV                               
+C15   N2    Excitation    7.36 eV                               
+C16   N2    Excitation    7.80 eV                               
+C17   N2    Excitation    8.16 eV                               
+C18   N2    Excitation    8.40 eV                               
+C19   N2    Excitation    8.55 eV                               
+C20   N2    Excitation    8.89 eV                               
+C21   N2    Excitation    11.03 eV                              
+C22   N2    Excitation    11.87 eV                              
+C23   N2    Excitation    12.25 eV                              
+C24   N2    Excitation    13.00 eV                              
+C25   N2    Ionization    15.60 eV                              
+CLEARRUNS
+RUN
+R1    100. Td    2.26 eV                                        
+R2    100. Td    2.26 eV                                        
+R3    100. Td    2.26 eV                                        
+R4    100. Td    2.26 eV                                        
+R5    100. Td    2.26 eV                                        
+R6    100. Td    2.26 eV                                        
+R7    100. Td    2.26 eV                                        
+SAVERESULTS
+output.txt
+FINISHED
