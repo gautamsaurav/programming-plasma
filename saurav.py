@@ -103,7 +103,7 @@ for time in np.arange(#let me decide later):
     np.savetxt(f1, efield)
     for line in ffloor:
         f1.write(line)
-    ffloor.close()
+	ffloor.close()
 	#execute bolsig+ software
 	os.system("./bolsigplus032016-linux/bolsigminus bolsigplus032016-linux/input.txt")
 	#import necessary parameters from bolsig output file
@@ -111,14 +111,14 @@ for time in np.arange(#let me decide later):
 	difind=np.array([(1*2+(1-1)*ngrid0),(1*3+(1-1)*ngrid0+ngrid0+1)])
 	with open('bolsigplus032016-linux/output.txt') as lines:
 		mobility[0,:]= np.transpose(np.genfromtxt(islice(lines,int(mobind[0]),int(mobind[1])))[:,1])
-    diffusion[0,:]=np.transpose(np.genfromtxt(islice(lines, difind[0],difind[1]))[:,1])
-    sourcee[0,:]=np.transpose(np.genfromtxt(islice(lines,13*3+2+13*ngrid0,14*3+13*ngrid0+1001))[:,1])
-    for indd in np.arange(ns-1):
-        sourcee[indd+1,:]=np.transpose(np.genfromtxt(islice(lines,2,1004))[:,0])
+		diffusion[0,:]=np.transpose(np.genfromtxt(islice(lines, difind[0],difind[1]))[:,1])
+		sourcee[0,:]=np.transpose(np.genfromtxt(islice(lines,13*3+2+13*ngrid0,14*3+13*ngrid0+1001))[:,1])
+		for indd in np.arange(ns-1):
+			sourcee[indd+1,:]=np.transpose(np.genfromtxt(islice(lines,2,1004))[:,0])
 
 	#continuity equation
 	#---------------------------------------------------------------------------------------------------
 
 	#charge accumulation at surface of dielectric
 	#---------------------------------------------------------------------------------------------------
-#end for
+#end forr
