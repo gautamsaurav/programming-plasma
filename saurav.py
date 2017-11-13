@@ -59,6 +59,7 @@ dxdxB2=dx*dx/2 # ''
 nwd1P2=nwd1+2 #used while calculating EField
 nwd1P2Pk=nwd1+2+ngrid0 #used while calculating EField
 nwd1Png0=nwd1+ngrid0 #used while calculating EField
+townsendunit=1.0/((2.5*10**(25))*(10**(-21)))
 
 
 #=======================Time Loop======================================================================
@@ -87,8 +88,8 @@ for time in np.arange(#let me decide later):
 			flagg=1
 		potentl[1:ngM2]=uu+alpha*(uu-potentl[1:ngM2]
 	#end while
-	#**calculate electric field as negative gradient of potential
-	efield[:,:]=(potentl[nwd1P2:nwd1P2Pk]-potentl[nwd1:nwd1Png0])/(-2*dx)
+	#**calculate electric field as negative gradient of potential (Expressed in Townsend Unit)
+	efield[:,:]=townsendunit*(potentl[nwd1P2:nwd1P2Pk]-potentl[nwd1:nwd1Png0])/(-2*dx)
 
 
 	#Obtain reaction and transport cofficients from solver software named  BOLSIG+
