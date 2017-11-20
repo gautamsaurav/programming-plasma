@@ -1,4 +1,4 @@
-#==== Python code on 1D Nitrogen plasma, (7-11-2017) ====
+#==== Python code on 1D Helium plasma, (7-11-2017) ====
 #==================Saurav Gautam========================= 
 import numpy as np
 import sys
