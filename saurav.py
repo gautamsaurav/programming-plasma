@@ -76,9 +76,6 @@ nwd1P2Pk=int(nwd1+2+ngrid0) #used while calculating EField
 nwd1Png0=int(nwd1+ngrid0) #used while calculating EField
 townsendunit=1.0/((2.5*10**(25))*(10**(-21)))
 
-flogfile= open("density.txt","w+")
-
-
 
 #=======================Time Loop======================================================================
 for time in np.arange(20000):
@@ -145,7 +142,9 @@ for time in np.arange(20000):
 	ndensity[1,ngrid0+1]=(sig_i_right)*dx
 
 	#export data of number density at regular intervals
-	if (time/1000.0==time//1000):
-		np.savetxt(flogfile, a)
+	if (time/100.0==time/100):
+		flogfile= open("density.txt","w")
+		np.savetxt(flogfile, ndensity)
+		flogfile.close()
 		
 #end for
