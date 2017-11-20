@@ -7,6 +7,10 @@ import os
 ee=1.6*10**(-19)
 e0=854187817*10**(-12)
 
+
+
+dt=1
+
 #*** 'Bolsig+' Input/output file description
 #----------------------------------------------------------------------------------------------------
 #inpfile='input.txt'
@@ -43,7 +47,7 @@ ngrid=int(ngrid0+2+nwd1+nwd2)    #total number of grid points(2 dielectrics +gas
 #*** Initialization
 #-----------------------------------------------------------------------------------------------------
 ns=2          #Number of species
-ndensity=np.zeros((ns,ngrid),float) #Density of each species in all grid points between dielectric
+ndensity=np.zeros((ns,ngrid0+2),float) #Density of each species in all grid points between dielectric
 ncharge=np.array([-1,1])  #Charge of the each species
 netcharge=np.zeros((1,ngrid),float) #net charge at all grid points used to solve poission equation
 potentl=np.zeros((1,ngrid),float) #potential at each grid points
@@ -82,7 +86,7 @@ for time in np.arange(10):#---- correct this
 	toll= 10**(-4) #tolerence
 	netcharge[:,:]=0 #clear the garbage value from pervious loop
 	for i in np.arange(ns):
-		netcharge[0,:]+=ee*ncharge[i]*ndensity[i,:]  #calculating the net charge at each grid points
+		netcharge[0,nwd1:nwd1+2+ngrid0]+=ee*ncharge[i]*ndensity[i,:]  #calculating the net charge at each grid points
 	#end for
 	#boundary conditions at dielectric surfaces
 	netcharge[0,posdielec1]=0   	#might be something in terms of sigma (but sigma is related to area not volume)
@@ -119,7 +123,18 @@ for time in np.arange(10):#---- correct this
 	difigrid[:,:]=idiffusion[0,indlocate]+((idiffusion[0,indlocate+1]-idiffusion[0,indlocate])*(efield-indlocate))
 	#continuity equation
 	#---------------------------------------------------------------------------------------------------
-	sourceegrid[0,1:ngrid0+1]+
+	#electron
+	ndensity[0,1:ngrid0+1]=(sourceegrid[0,1:ngrid0+1]-ndensity[0,1:ngrid0+1]*(efield[0,2:ngrid0+2]*mobegrid[0,2:ngrid0+2]-efield[0,0:ngrid0]*mobegrid[0,0:ngrid0])/(2*dx)-efield[0,1:ngrid0+1]*mobegrid[0,1:ngrid0+1]*(ndensity[0,2:ngrid0+2]-ndensity[0,0:ngrid0])/(2*dx)+difegrid[0,1:ngrid0+1]*(ndensity[0,2:ngrid0+2]-2*ndensity[0,1:ngrid0+1]+ndensity[0,0:ngrid0])/(dx*dx)+(ndensity[0,2:ngrid0+2]-ndensity[0,0:ngrid0])*(difegrid[0,2:ngrid0+2]-difegrid[0,0:ngrid0])/(4*dx*dx))*dt+ndensity[0,1:ngrid0+1]
+	#ion
+	ndensity[1,1:ngrid0+1]=(sourceegrid[0,1:ngrid0+1]-ndensity[1,1:ngrid0+1]*(efield[0,2:ngrid0+2]*mobigrid[0,2:ngrid0+2]-efield[0,0:ngrid0]*mobigrid[0,0:ngrid0])/(2*dx)-efield[0,1:ngrid0+1]*mobigrid[0,1:ngrid0+1]*(ndensity[1,2:ngrid0+2]-ndensity[1,0:ngrid0])/(2*dx)+difigrid[0,1:ngrid0+1]*(ndensity[1,2:ngrid0+2]-2*ndensity[1,1:ngrid0+1]+ndensity[1,0:ngrid0])/(dx*dx)+(ndensity[1,2:ngrid0+2]-ndensity[1,0:ngrid0])*(difigrid[0,2:ngrid0+2]-difigrid[0,0:ngrid0])/(4*dx*dx))*dt+ndensity[1,1:ngrid0+1]
 	#charge accumulation at surface of dielectric
 	#---------------------------------------------------------------------------------------------------
+	sig_e_left=sig_e_left+dt*(ndensity[0,0]*mobegrid[0,0]*efield[0,0]-10*sig_e_left-10**(-6)*sig_e_left*sig_e_right)
+	sig_e_right=sig_e_right+dt*(ndensity[0,ngrid0+1]*mobegrid[0,ngrid0+1]*efield[0,ngrid0+1]-10*sig_e_right-10**(-6)*sig_e_left*sig_e_right)
+	sig_i_left=sig_i_left+dt*((1+0.01)*ndensity[1,0]*mobigrid[0,0]*efield[0,0]-10**(-6)*sig_i_left*sig_i_right)
+	sig_i_right=sig_i_right+dt*((1+0.01)*ndensity[1,ngrid0+1]*mobigrid[0,ngrid0+1]*efield[0,ngrid0+1]-10**(-6)*sig_i_left*sig_i_right)
+	ndensity[0,0]=(sig_e_left)*dx
+	ndensity[0,ngrid0+1]=(sig_e_right)*dx     
+	ndensity[1,0]=(sig_i_left)*dx
+	ndensity[1,ngrid0+1]=(sig_i_right)*dx
 #end for
