@@ -32,10 +32,10 @@ ndensity=np.zeros((ns,ngrid),float) #Density of each species in all grid points 
 ncharge=np.array([1,1,1,0,0,1,1,1,-1,-1,1,-2,1,1])  #Charge of the each species
 netcharge=np.zeros((1,ngrid),float) #net charge at all grid points used to solve poission equation
 potentl=np.zeros((1,ngrid),float) #potential at each grid points
-efield=np.zeros((1,ngrid0),float) #electric field at each grid points
+efield=np.zeros((1,ngrid0+2),float) #electric field at each grid points
 mobgrid=np.zeros((1,ngrid0+2),float)#mobility at grid points, 1 row=1 tyepe of gaseous species
 difgrid=np.zeros((1,ngrid0+2),float)#diffusion coefficient at each grid points
-sourcegrid=np.zeros((1,ngrid0+2),float)#reaction rate at each grid points
+sourcegrid=np.zeros((ns,ngrid0+2),float)#reaction rate at each grid points
 sig_e_left=0   #Electron surface charge density at left dielectric
 sig_e_right=0  #Electron surface charge density at right dielectric
 sig_i_left=0   #Ion surface charge density at left dielectric      
@@ -51,9 +51,9 @@ sourcee=np.zeros((ns,ngrid0),float)
 mobind=np.array([(31+3*3+2*ngrid0),(31+3*3+2*ngrid0)+ngrid0+1])
 difind=np.array([(1*2+(1-1)*ngrid0),(1*3+(1-1)*ngrid0+ngrid0+1)])
 with open('bolsigplus032016-linux/output.txt') as lines:
-    mobility[0,:]= np.transpose(np.genfromtxt(islice(lines,int(mobind[0]),int(mobind[1])))[:,1])
-    diffusion[0,:]=np.transpose(np.genfromtxt(islice(lines, difind[0],difind[1]))[:,1])
-    sourcee[0,:]=np.transpose(np.genfromtxt(islice(lines,13*3+2+13*ngrid0,14*3+13*ngrid0+1001))[:,1])
+    mobility[0,:]=np.transpose(np.genfromtxt(islice(lines,int(mobind[0]),int(mobind[1])))[:,1])/(2.5*10**25)
+    diffusion[0,:]=np.transpose(np.genfromtxt(islice(lines, difind[0],difind[1]))[:,1])/(2.5*10**25)
+    sourcee[0,:]=np.transpose(np.genfromtxt(islice(lines,13*3+2+13*ngrid0,14*3+13*ngrid0+1001))[:,1])/(2.5*10**25)
     for indd in np.arange(ns-1):
         sourcee[indd+1,:]=np.transpose(np.genfromtxt(islice(lines,2,1004))[:,1])
 
@@ -107,13 +107,17 @@ for time in np.arange(10):#---- correct this
 		#endfor
 	#end while
 	#**calculate electric field as negative gradient of potential (Expressed in Townsend Unit)
-	efield=townsendunit*(potentl[0,nwd1P2:nwd1P2Pk]-potentl[0,nwd1:nwd1Png0])/(-2.0*dx)
+	efield[:,:]=townsendunit*(potentl[0,nwd1+1:nwd1+3+ngrid0]-potentl[0,nwd1-1:nwd1+1+ngrid0])/(-2.0*dx)
 	
 	#calculating the coefficients
-	indlocate=efield[nwd1:(nwd1+ngrid0+2)].astype(int)
-	#continuity equation
+	indlocate=efield[:,:].astype(int)
+	mobgrid[:,:]=mobility[0,indlocate]+(mobility[0,indlocate+1]-mobility[0,indlocate])*(efield-indlocate)
+	difgrid[:,:]=diffusion[0,indlocate]+((diffusion[0,indlocate+1]-diffusion[0,indlocate])*(efield-indlocate))
+	for cc in np.arange(ns):
+		sourcegrid[cc,:]=sourcee[0,indlocate]+(sourcee[0,indlocate+1]-sourcee[0,indlocate])*(efield-indlocate)
+     #continuity equation
 	#---------------------------------------------------------------------------------------------------
-
+	
 	#charge accumulation at surface of dielectric
 	#---------------------------------------------------------------------------------------------------
 #end for
