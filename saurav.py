@@ -1,15 +1,12 @@
 #==== Python code on 1D Nitrogen plasma, (7-11-2017) ====
 #==================Saurav Gautam========================= 
 import numpy as np
+import sys
 import math
 from itertools import islice
 import os
 ee=1.6*10**(-19)
 e0=854187817*10**(-12)
-
-
-
-dt=1
 
 #*** 'Bolsig+' Input/output file description
 #----------------------------------------------------------------------------------------------------
@@ -26,6 +23,7 @@ with open('output.txt') as lines:
     esourcee[0,:]=np.transpose(np.genfromtxt(islice(lines,2,998))[:,1])
     imobility[0,:]=np.transpose(np.genfromtxt(islice(lines,2,998))[:,1])
     idiffusion[0,:]=np.transpose(np.genfromtxt(islice(lines,2,998))[:,1])
+
 #*** description of plasma reactor
 #---------------------------------------------------------------------------------------------------
 width=11.0     #space between two dielectric in mm
@@ -43,6 +41,7 @@ wd1=nwd1*dx                 #Making wd1 as exact multiple of dx
 wd2=nwd2*dx                 #making wd2 as exact multiple of dx
 inelec=width*10**(-2)+wd1+wd2#total interelectrode separation
 ngrid=int(ngrid0+2+nwd1+nwd2)    #total number of grid points(2 dielectrics +gas medium + all edge points)
+dt=10**(-8)
 
 #*** Initialization
 #-----------------------------------------------------------------------------------------------------
@@ -96,7 +95,7 @@ for time in np.arange(10):#---- correct this
 	potentl[0,0]=1000*math.sin(3.14/2) #---- correct this
 	potentl[0,posrtelectrode]=0 #potential at right electrode
 	# SOR(successive over relaxation method) Poission equation
-#	uu=np.zeros((1,sizeouu),float)
+	#	uu=np.zeros((1,sizeouu),float)
 	flagg=0
 	cont88=0
 	while (flagg==0):
@@ -107,20 +106,23 @@ for time in np.arange(10):#---- correct this
 			if cont88>ngrid-10:
 				flagg=1
 			potentl[0,cont8]=uu+alpha*(uu-potentl[0,cont8])
-			if cont8<20:
-				print(cont8,potentl[0,cont8-1],potentl[0,cont8+1],potentl[0,cont8],uu)
 		#endfor
 	#end while
 	#**calculate electric field as negative gradient of potential (Expressed in Townsend Unit)
 	efield[:,:]=townsendunit*(potentl[0,nwd1+1:nwd1+3+ngrid0]-potentl[0,nwd1-1:nwd1+1+ngrid0])/(-2.0*dx)
+	if any(efield>990):#All the reaction coefficients are calculated for efield<990. Value more than that will imply that the there is something wrong in the simulation
+		f= open("logfile.txt","w+")
+		f.write("Error!! The value of Electric field exceeded limit. Something might be wrong!!")
+		sys.exit()
 	
-	#calculating the coefficients
+	#calculating the coefficients (Interpolation..)
 	indlocate=efield[:,:].astype(int)
 	mobegrid[:,:]=emobility[0,indlocate]+(emobility[0,indlocate+1]-emobility[0,indlocate])*(efield-indlocate)
 	difegrid[:,:]=ediffusion[0,indlocate]+((ediffusion[0,indlocate+1]-ediffusion[0,indlocate])*(efield-indlocate))
 	sourceegrid[:,:]=esourcee[0,indlocate]+(esourcee[0,indlocate+1]-esourcee[0,indlocate])*(efield-indlocate)
 	mobigrid[:,:]=imobility[0,indlocate]+(imobility[0,indlocate+1]-imobility[0,indlocate])*(efield-indlocate)
 	difigrid[:,:]=idiffusion[0,indlocate]+((idiffusion[0,indlocate+1]-idiffusion[0,indlocate])*(efield-indlocate))
+
 	#continuity equation
 	#---------------------------------------------------------------------------------------------------
 	#electron
