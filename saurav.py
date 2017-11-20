@@ -76,9 +76,12 @@ nwd1P2Pk=int(nwd1+2+ngrid0) #used while calculating EField
 nwd1Png0=int(nwd1+ngrid0) #used while calculating EField
 townsendunit=1.0/((2.5*10**(25))*(10**(-21)))
 
+flogfile= open("density.txt","w+")
+
+
 
 #=======================Time Loop======================================================================
-for time in np.arange(10):#---- correct this
+for time in np.arange(20000):
 	#poission equation
 	#--------------------------------------------------------------------------------------------------	
 	alpha=0.5 #relaxation parameter for SOR algorithm
@@ -103,14 +106,14 @@ for time in np.arange(10):#---- correct this
 			uu=0.5*(potentl[0,cont8-1]+potentl[0,cont8+1])-(netcharge[0,cont8]/e0)*dx*dx/2
 			if abs((potentl[0,cont8]-uu)/uu)<toll:
 				cont88=cont88+1
-			if cont88>ngrid-10:
+			if cont88>ngrid/4:
 				flagg=1
 			potentl[0,cont8]=uu+alpha*(uu-potentl[0,cont8])
 		#endfor
 	#end while
 	#**calculate electric field as negative gradient of potential (Expressed in Townsend Unit)
 	efield[:,:]=townsendunit*(potentl[0,nwd1+1:nwd1+3+ngrid0]-potentl[0,nwd1-1:nwd1+1+ngrid0])/(-2.0*dx)
-	if any(efield>990):#All the reaction coefficients are calculated for efield<990. Value more than that will imply that the there is something wrong in the simulation
+	if any(efield[0,:]>990):#All the reaction coefficients are calculated for efield<990. Value more than that will imply that the there is something wrong in the simulation
 		f= open("logfile.txt","w+")
 		f.write("Error!! The value of Electric field exceeded limit. Something might be wrong!!")
 		sys.exit()
@@ -126,9 +129,10 @@ for time in np.arange(10):#---- correct this
 	#continuity equation
 	#---------------------------------------------------------------------------------------------------
 	#electron
-	ndensity[0,1:ngrid0+1]=(sourceegrid[0,1:ngrid0+1]-ndensity[0,1:ngrid0+1]*(efield[0,2:ngrid0+2]*mobegrid[0,2:ngrid0+2]-efield[0,0:ngrid0]*mobegrid[0,0:ngrid0])/(2*dx)-efield[0,1:ngrid0+1]*mobegrid[0,1:ngrid0+1]*(ndensity[0,2:ngrid0+2]-ndensity[0,0:ngrid0])/(2*dx)+difegrid[0,1:ngrid0+1]*(ndensity[0,2:ngrid0+2]-2*ndensity[0,1:ngrid0+1]+ndensity[0,0:ngrid0])/(dx*dx)+(ndensity[0,2:ngrid0+2]-ndensity[0,0:ngrid0])*(difegrid[0,2:ngrid0+2]-difegrid[0,0:ngrid0])/(4*dx*dx))*dt+ndensity[0,1:ngrid0+1]
+	ndensity[0,1:ngrid0+1]=(sourceegrid[0,1:ngrid0+1]+ndensity[0,1:ngrid0+1]*(efield[0,2:ngrid0+2]*mobegrid[0,2:ngrid0+2]-efield[0,0:ngrid0]*mobegrid[0,0:ngrid0])/(2*dx)-efield[0,1:ngrid0+1]*mobegrid[0,1:ngrid0+1]*(ndensity[0,2:ngrid0+2]-ndensity[0,0:ngrid0])/(2*dx)+difegrid[0,1:ngrid0+1]*(ndensity[0,2:ngrid0+2]-2*ndensity[0,1:ngrid0+1]+ndensity[0,0:ngrid0])/(dx*dx)+(ndensity[0,2:ngrid0+2]-ndensity[0,0:ngrid0])*(difegrid[0,2:ngrid0+2]-difegrid[0,0:ngrid0])/(4*dx*dx))*dt+ndensity[0,1:ngrid0+1]
 	#ion
 	ndensity[1,1:ngrid0+1]=(sourceegrid[0,1:ngrid0+1]-ndensity[1,1:ngrid0+1]*(efield[0,2:ngrid0+2]*mobigrid[0,2:ngrid0+2]-efield[0,0:ngrid0]*mobigrid[0,0:ngrid0])/(2*dx)-efield[0,1:ngrid0+1]*mobigrid[0,1:ngrid0+1]*(ndensity[1,2:ngrid0+2]-ndensity[1,0:ngrid0])/(2*dx)+difigrid[0,1:ngrid0+1]*(ndensity[1,2:ngrid0+2]-2*ndensity[1,1:ngrid0+1]+ndensity[1,0:ngrid0])/(dx*dx)+(ndensity[1,2:ngrid0+2]-ndensity[1,0:ngrid0])*(difigrid[0,2:ngrid0+2]-difigrid[0,0:ngrid0])/(4*dx*dx))*dt+ndensity[1,1:ngrid0+1]
+
 	#charge accumulation at surface of dielectric
 	#---------------------------------------------------------------------------------------------------
 	sig_e_left=sig_e_left+dt*(ndensity[0,0]*mobegrid[0,0]*efield[0,0]-10*sig_e_left-10**(-6)*sig_e_left*sig_e_right)
@@ -139,4 +143,9 @@ for time in np.arange(10):#---- correct this
 	ndensity[0,ngrid0+1]=(sig_e_right)*dx     
 	ndensity[1,0]=(sig_i_left)*dx
 	ndensity[1,ngrid0+1]=(sig_i_right)*dx
+
+	#export data of number density at regular intervals
+	if (time/1000.0==time//1000):
+		np.savetxt(flogfile, a)
+		
 #end for
