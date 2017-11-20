@@ -7,6 +7,21 @@ import os
 ee=1.6*10**(-19)
 e0=854187817*10**(-12)
 
+#*** 'Bolsig+' Input/output file description
+#----------------------------------------------------------------------------------------------------
+#inpfile='input.txt'
+oupfile='output.txt'
+emobility=np.zeros((1,996),float)
+ediffusion=np.zeros((1,996),float)
+esourcee=np.zeros((1,996),float)
+imobility=np.zeros((1,996),float)
+idiffusion=np.zeros((1,996),float)
+with open('output.txt') as lines:
+    emobility[0,:]=np.transpose(np.genfromtxt(islice(lines,1,997))[:,1])
+    ediffusion[0,:]=np.transpose(np.genfromtxt(islice(lines, 2,998))[:,1])
+    esourcee[0,:]=np.transpose(np.genfromtxt(islice(lines,2,998))[:,1])
+    imobility[0,:]=np.transpose(np.genfromtxt(islice(lines,2,998))[:,1])
+    idiffusion[0,:]=np.transpose(np.genfromtxt(islice(lines,2,998))[:,1])
 #*** description of plasma reactor
 #---------------------------------------------------------------------------------------------------
 width=11.0     #space between two dielectric in mm
@@ -27,35 +42,21 @@ ngrid=int(ngrid0+2+nwd1+nwd2)    #total number of grid points(2 dielectrics +gas
 
 #*** Initialization
 #-----------------------------------------------------------------------------------------------------
-ns=14          #Number of species
+ns=2          #Number of species
 ndensity=np.zeros((ns,ngrid),float) #Density of each species in all grid points between dielectric
-ncharge=np.array([1,1,1,0,0,1,1,1,-1,-1,1,-2,1,1])  #Charge of the each species
+ncharge=np.array([-1,1])  #Charge of the each species
 netcharge=np.zeros((1,ngrid),float) #net charge at all grid points used to solve poission equation
 potentl=np.zeros((1,ngrid),float) #potential at each grid points
 efield=np.zeros((1,ngrid0+2),float) #electric field at each grid points
-mobgrid=np.zeros((1,ngrid0+2),float)#mobility at grid points, 1 row=1 tyepe of gaseous species
-difgrid=np.zeros((1,ngrid0+2),float)#diffusion coefficient at each grid points
-sourcegrid=np.zeros((ns,ngrid0+2),float)#reaction rate at each grid points
+mobegrid=np.zeros((1,ngrid0+2),float)#mobility at grid points, 1 row=1 tyepe of gaseous species
+difegrid=np.zeros((1,ngrid0+2),float)#diffusion coefficient at each grid points
+sourceegrid=np.zeros((1,ngrid0+2),float)#reaction rate at each grid points
+mobigrid=np.zeros((1,ngrid0+2),float)
+difigrid=np.zeros((1,ngrid0+2),float)
 sig_e_left=0   #Electron surface charge density at left dielectric
 sig_e_right=0  #Electron surface charge density at right dielectric
 sig_i_left=0   #Ion surface charge density at left dielectric      
 sig_i_right=0  #Ion surface charge density at right dielectric
-
-#*** 'Bolsig+' Input/output file description
-#----------------------------------------------------------------------------------------------------
-#inpfile='input.txt'
-oupfile='output.txt'
-diffusion=np.zeros((1,ngrid0),float)
-mobility=np.zeros((1,ngrid0),float)
-sourcee=np.zeros((ns,ngrid0),float)
-mobind=np.array([(31+3*3+2*ngrid0),(31+3*3+2*ngrid0)+ngrid0+1])
-difind=np.array([(1*2+(1-1)*ngrid0),(1*3+(1-1)*ngrid0+ngrid0+1)])
-with open('bolsigplus032016-linux/output.txt') as lines:
-    mobility[0,:]=np.transpose(np.genfromtxt(islice(lines,int(mobind[0]),int(mobind[1])))[:,1])/(2.5*10**25)
-    diffusion[0,:]=np.transpose(np.genfromtxt(islice(lines, difind[0],difind[1]))[:,1])/(2.5*10**25)
-    sourcee[0,:]=np.transpose(np.genfromtxt(islice(lines,13*3+2+13*ngrid0,14*3+13*ngrid0+1001))[:,1])/(2.5*10**25)
-    for indd in np.arange(ns-1):
-        sourcee[indd+1,:]=np.transpose(np.genfromtxt(islice(lines,2,1004))[:,1])
 
 #some calculations done before starting the time loop to reduce recurrent calculations inside the loop
 #-----------------------------------------------------------------------------------------------------
@@ -111,13 +112,14 @@ for time in np.arange(10):#---- correct this
 	
 	#calculating the coefficients
 	indlocate=efield[:,:].astype(int)
-	mobgrid[:,:]=mobility[0,indlocate]+(mobility[0,indlocate+1]-mobility[0,indlocate])*(efield-indlocate)
-	difgrid[:,:]=diffusion[0,indlocate]+((diffusion[0,indlocate+1]-diffusion[0,indlocate])*(efield-indlocate))
-	for cc in np.arange(ns):
-		sourcegrid[cc,:]=sourcee[0,indlocate]+(sourcee[0,indlocate+1]-sourcee[0,indlocate])*(efield-indlocate)
-     #continuity equation
+	mobegrid[:,:]=emobility[0,indlocate]+(emobility[0,indlocate+1]-emobility[0,indlocate])*(efield-indlocate)
+	difegrid[:,:]=ediffusion[0,indlocate]+((ediffusion[0,indlocate+1]-ediffusion[0,indlocate])*(efield-indlocate))
+	sourceegrid[:,:]=esourcee[0,indlocate]+(esourcee[0,indlocate+1]-esourcee[0,indlocate])*(efield-indlocate)
+	mobigrid[:,:]=imobility[0,indlocate]+(imobility[0,indlocate+1]-imobility[0,indlocate])*(efield-indlocate)
+	difigrid[:,:]=idiffusion[0,indlocate]+((idiffusion[0,indlocate+1]-idiffusion[0,indlocate])*(efield-indlocate))
+	#continuity equation
 	#---------------------------------------------------------------------------------------------------
-	
+	sourceegrid[0,1:ngrid0+1]+
 	#charge accumulation at surface of dielectric
 	#---------------------------------------------------------------------------------------------------
 #end for
