@@ -142,6 +142,7 @@ for time in np.arange(20000):
 	ndensity[1,ngrid0+1]=(sig_i_right)*dx
 
 	#export data of number density at regular intervals
+     #print(time)
 	if (time/100.0==time/100):
 		flogfile= open("density.txt","w")
 		np.savetxt(flogfile, ndensity)
