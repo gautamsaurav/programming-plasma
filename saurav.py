@@ -5,10 +5,11 @@ import sys
 import math
 from itertools import islice
 import os
-ee=1.6*10**(-19)
-e0=854187817*10**(-12)
+ee=1.6*10**(-19) #electronic charge
+e0=8.54187817*10**(-12) #epsilon
+townsendunit=1.0/((2.5*10**(25))*(10)**(-21))
 
-#*** 'Bolsig+' Input/output file description
+#*** Importing the value of MOBILITY, DIffusion and reaction rate from a text file
 #----------------------------------------------------------------------------------------------------
 #inpfile='input.txt'
 oupfile='output.txt'
@@ -24,28 +25,26 @@ with open('output.txt') as lines:
     imobility[0,:]=np.transpose(np.genfromtxt(islice(lines,2,998))[:,1])
     idiffusion[0,:]=np.transpose(np.genfromtxt(islice(lines,2,998))[:,1])
 
-#*** description of plasma reactor
+#*** Description of plasma reactor
 #---------------------------------------------------------------------------------------------------
 width=11.0     #space between two dielectric in mm
 ngrid0=1000     #Number of grid points (between two dielectric)
 wd1=3.0        #width of first dielectric in mm
 wd2=3.0        #width of second dielectric in mm
-volt=1000.0    #Interelectrode voltage (peak not RMS)
-freq=50        #frequency of the AC voltage (Hz)
-cyc=3          #Total number of AC cycles for which simulation is done. Sumulation_Time=(1/freq)*cyc
-gasdens=2.5*10**25          #number density of gas at NTP (unit: m^-3)
+volt=10000.0    #Interelectrode voltage (peak not RMS)
+gasdens=2.504*10**25          #number density of gas at NTP (unit: m^-3)
 dx=width*10**(-2)/(ngrid0+1)#Grid size in meter
-nwd1=int(wd1*10**(-2)//dx)       #number of grid points in first dielectric
-nwd2=int(wd2*10**(-2)//dx)       #Number of grid points in second dielectric
+nwd1=int(wd1*10**(-2)/dx)       #number of grid points in first dielectric
+nwd2=int(wd2*10**(-2)/dx)       #Number of grid points in second dielectric
 wd1=nwd1*dx                 #Making wd1 as exact multiple of dx
 wd2=nwd2*dx                 #making wd2 as exact multiple of dx
 inelec=width*10**(-2)+wd1+wd2#total interelectrode separation
 ngrid=int(ngrid0+2+nwd1+nwd2)    #total number of grid points(2 dielectrics +gas medium + all edge points)
-dt=10**(-8)
+dt=10**(-8) #small time interval
 
 #*** Initialization
 #-----------------------------------------------------------------------------------------------------
-ns=2          #Number of species
+ns=2          #Number of species (Taking helium gas, one is electron and another is helium ion)
 ndensity=np.zeros((ns,ngrid0+2),float) #Density of each species in all grid points between dielectric
 ncharge=np.array([-1,1])  #Charge of the each species
 netcharge=np.zeros((1,ngrid),float) #net charge at all grid points used to solve poission equation
@@ -61,24 +60,8 @@ sig_e_right=0  #Electron surface charge density at right dielectric
 sig_i_left=0   #Ion surface charge density at left dielectric      
 sig_i_right=0  #Ion surface charge density at right dielectric
 
-#some calculations done before starting the time loop to reduce recurrent calculations inside the loop
-#-----------------------------------------------------------------------------------------------------
-posdielec1=nwd1 #array index of left dielectric surface
-posdielec2=ngrid-nwd2-1 #array index of right dielectric surface  
-posrtelectrode=ngrid-1 #array index of right electrode
-sizeouu=ngrid-2 #grid points excluding electrode surfaces
-ngM1=int(ngrid-1) #ngrid minus 1
-ngM2=int(ngrid-2) # ''
-ngM3=int(ngrid-3) # ''
-dxdxB2=dx*dx/2 # ''
-nwd1P2=int(nwd1+2) #used while calculating EField
-nwd1P2Pk=int(nwd1+2+ngrid0) #used while calculating EField
-nwd1Png0=int(nwd1+ngrid0) #used while calculating EField
-townsendunit=1.0/((2.5*10**(25))*(10**(-21)))
-
-
 #=======================Time Loop======================================================================
-for time in np.arange(20000):
+for time in range(1,20000):
 	#poission equation
 	#--------------------------------------------------------------------------------------------------	
 	alpha=0.5 #relaxation parameter for SOR algorithm
@@ -86,16 +69,11 @@ for time in np.arange(20000):
 	netcharge[:,:]=0 #clear the garbage value from pervious loop
 	for i in np.arange(ns):
 		netcharge[0,nwd1:nwd1+2+ngrid0]+=ee*ncharge[i]*ndensity[i,:]  #calculating the net charge at each grid points
-	#end for
-	#boundary conditions at dielectric surfaces
-	netcharge[0,posdielec1]=0   	#might be something in terms of sigma (but sigma is related to area not volume)
-	netcharge[0,posdielec2]=0	#might be something in terms of sigma (but sigma is related to area not volume)	
+  
 	#boundary condition for potential
 	potentl[:,:]=0 # delete the garbage value of potential, if exists
-	potentl[0,0]=1000*math.sin(3.14/2) #---- correct this
-	potentl[0,posrtelectrode]=0 #potential at right electrode
+	potentl[0,0]=volt*math.sin(((math.pi)/180)*(time*10**(-8))*10**(2)*360) # 1 cycle at 1 microsecond
 	# SOR(successive over relaxation method) Poission equation
-	#	uu=np.zeros((1,sizeouu),float)
 	flagg=0
 	cont88=0
 	while (flagg==0):
@@ -106,8 +84,7 @@ for time in np.arange(20000):
 			if cont88>ngrid/4:
 				flagg=1
 			potentl[0,cont8]=uu+alpha*(uu-potentl[0,cont8])
-		#endfor
-	#end while
+   
 	#**calculate electric field as negative gradient of potential (Expressed in Townsend Unit)
 	efield[:,:]=townsendunit*(potentl[0,nwd1+1:nwd1+3+ngrid0]-potentl[0,nwd1-1:nwd1+1+ngrid0])/(-2.0*dx)
 	if any(efield[0,:]>990):#All the reaction coefficients are calculated for efield<990. Value more than that will imply that the there is something wrong in the simulation
