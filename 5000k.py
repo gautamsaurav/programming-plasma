@@ -2,11 +2,8 @@
 #==================Saurav Gautam=========================
 import numpy as np
 import sys
-import time
 import matplotlib.pyplot as plt
 import scipy.sparse.linalg as la
-from scipy.sparse.linalg import spsolve
-from scipy.sparse import csc_matrix
 import scipy.sparse as sparse
 
 def poissonmatrix(nxp, k1=-1, k2=0, k3=1):
@@ -26,40 +23,32 @@ def readBoltzmannParameters(npoints,oupfile='output.txt'):
     esourcee=np.zeros(npoints,float)
     imobility=np.zeros(npoints,float)
     idiffusion=np.zeros(npoints,float)
-   
     file=open(oupfile)
     line=file.readline()
     for data in np.arange(npoints):
        line=file.readline()
        lineSplit=line.split()
        emobility[data]=float(lineSplit[1])
-    #print('done with emobility')
     line=file.readline(); line=file.readline();
     for data in np.arange(npoints):
        line=file.readline()
        lineSplit=line.split()
        ediffusion[data]=float(lineSplit[1])
-    #print('done with ediffusion')
     line=file.readline(); line=file.readline();
     for data in np.arange(npoints):
        line=file.readline()
        lineSplit=line.split()
        esourcee[data]=float(lineSplit[1])
-    #print('done with esourcee')
     line=file.readline(); line=file.readline();
     for data in np.arange(npoints):
        line=file.readline()
        lineSplit=line.split()
        imobility[data]=float(lineSplit[1])
-    #print('done with imobility')
     line=file.readline(); line=file.readline();
     for data in np.arange(npoints):
        line=file.readline()
        lineSplit=line.split()
-       idiffusion[data]=float(lineSplit[1])
-       #print(data,idiffusion[data])
-       #print('done with idiffusion')
-   
+       idiffusion[data]=float(lineSplit[1]) 
     return(emobility,ediffusion,esourcee,imobility,idiffusion)
       
       
@@ -67,7 +56,7 @@ def fourPlots(ones,titleone,two,titletwo,three,titlethree,four,titlefour):
         f, axarr = plt.subplots(2, 2)
         for field in ones:
             axarr[0,0].plot(field);
-        axarr[0,0].set_title(titleone)       
+        #axarr[0,0].set_title(titleone)       
         axarr[0,1].plot(netcharge)
         axarr[0,1].set_title(titletwo)
         axarr[1,1].plot(potentl)
@@ -76,6 +65,23 @@ def fourPlots(ones,titleone,two,titletwo,three,titlethree,four,titlefour):
         axarr[1,0].set_title(titlefour)
         f.subplots_adjust(hspace=0.3)
         plt.show()
+        
+        
+
+def SparseContinuityOperator(dif,dx,dt,vi,k1=-1,k2=0,k3=1):
+    nx=dif.size
+    d1=np.zeros((nx),float)
+    d2=np.ones((nx),float)
+    d3=np.zeros((nx),float)
+    graddif=(dif[2:]-dif[:-2])/(2*dx)
+    avM=0.5*(vi[:-2]+vi[1:-1])
+    avP=0.5*(vi[1:-1]+vi[2:])
+    d1[:-2]=-dt*dif[1:-1]/(dx**2)+dt*graddif/(2*dx)+dt*avM/(2*dx)+dt*vi[0:-2]/(2*dx)
+    d2[1:-1]=(1+2*dt*dif[1:-1]/(dx**2))+dt*(-avM/(2*dx)+vi[1:-1]/(2*dx)-avP/(2*dx)-vi[1:-1]/(2*dx))
+    d3[2:]=-(dt*graddif/(2*dx)+dt*dif[1:-1]/(dx**2))+dt*(avP/(2*dx)-vi[2:]/(2*dx))
+    return (sparse.dia_matrix(([d1,d2,d3],[k1,k2,k3]),shape=(nx,nx)).tocsc() )
+
+
 
 parameterSize=996       
 (emobility,ediffusion,esourcee,imobility,idiffusion) = readBoltzmannParameters(parameterSize,'output.txt')
@@ -84,9 +90,9 @@ parameterSize=996
 #*** Parameters for the of plasma reactor
 #-------------------------------------------------------------------------------------------------------------
 width=5.0     #space between two dielectric in mm
-ngrid0=2000     #Number of grid points (between two dielectric)
-wd1=0.5        #width of first dielectric in mm
-wd2=0.5        #width of second dielectric in mm
+ngrid0=300     #Number of grid points (between two dielectric)
+wd1=1.        #width of first dielectric in mm
+wd2=1.        #width of second dielectric in mm
 dx=width*10**(-3)/(ngrid0+1.0)#Grid size in meter
 nwd1=int(wd1*10**(-3)/dx)       #number of grid points in first dielectric
 nwd2=int(wd2*10**(-3)/dx)       #Number of grid points in second dielectric
@@ -95,14 +101,14 @@ wd2=nwd2*dx                 #making wd2 as exact multiple of dx
 inelec=width*10**(-3)+wd1+wd2#total interelectrode separation
 ngrid=int(ngrid0+2+nwd1+nwd2)    #total number of grid points(2 dielectrics +gas medium + all edge points)
 #--------------------------------------------------------------------------------------------------------------
-volt=6000.0    #Interelectrode voltage (peak not RMS)
+volt=2000.0    #Interelectrode voltage (peak not RMS)
 gasdens=2.504e25          #number density of gas at NTP (unit: m^-3)
 dt=1.0e-9 #small tyme interval
-dt1=1.0*dt
-frequencySource = 20000 #30KHz
+frequencySource = 40000 #30KHz
 ee=1.6*10**(-19) #electronic charge
 e0=8.54187817*10**(-12) #epsilon
-townsendunit=1.0/((2.5*10**(25))*(10)**(-21))
+townsendunit=1.0/((gasdens)*(10)**(-21))
+Kboltz=1.380*10e-23
 
 #*** Initialization
 #-----------------------------------------------------------------------------------------------------
@@ -139,149 +145,124 @@ tyme=0.0
 
 for tymeStep in range(1,numberOfSteps):
     tyme=tyme+dt
-#    if leftPot>2450: 
-#        dt=10e-14
-#    else: 
-#        dt=10e-10
    #poission equation
     #==================================================================================================================
     netcharge[:]=0.0 #clear the garbage value from pervious loop
     for i in np.arange(ns):
         netcharge[nwd1:nwd1+2+ngrid0]+=ee*ncharge[i]*ndensity[i,:]  #calculating the net charge at each grid points
-    #boundary condition for potential
     leftPot=1.0*volt*np.sin(2*np.pi*tyme*frequencySource) # frequency of the source is given by a parameter
     rightpot=0.0*volt*np.sin(2*np.pi*tyme*frequencySource)
-    #potentl[:]=leftPot*(ngrid-np.arange(ngrid)-1.0)/(ngrid-1.0)
     chrgg=(netcharge[1:-1]/e0)*dx*dx
     chrgg[0]=chrgg[0]+leftPot
     chrgg[-1]=chrgg[-1]+rightpot
     potentl[0]=leftPot
     potentl[-1]=rightpot
-    #solvedsparse=la.spsolve(Maat2,chrgg)
-    #%solvpot=np.linalg.solve(Maat1, chrgg)
-    solvpot=invertedmat.dot(chrgg)
-    
+    solvpot=la.spsolve(Maat2,chrgg)
     potentl[1:-1]=solvpot 
+    
     #**calculate electric field as negative gradient of potential (Expressed in Townsend Unit)
     efield[:]=-townsendunit*(potentl[nwd1+1:nwd1+3+ngrid0]-potentl[nwd1-1:nwd1+1+ngrid0])/(2.0*dx)
-    efield[0]=-townsendunit*(potentl[nwd1+1]-potentl[nwd1])/dx
+    efield[0]=-townsendunit*(-(11.0/6)*potentl[nwd1]+3.0*potentl[nwd1+1]-(3.0/2)*potentl[nwd1+2]+(1.0/3)*potentl[nwd1+3])/dx
     efield[-1]=-townsendunit*(potentl[nwd1+1+ngrid0]-potentl[nwd1+ngrid0])/dx
+   
     if any(abs(efield[:])>1000):#All the reaction coefficients are calculated for efield<npoints. Value more than that will imply that the there is something wrong in the simulation
        f= open("logfile.txt","w+")
        f.write("Error!! The value of Electric field exceeded limit. Something might be wrong!!")
        sys.exit()
-   
+       
     #calculating the coefficients (Interpolation..)-------------------------------------------------------------------------------------
     indlocate=abs(efield[:]).astype(int)
-    mobegrid=-1.0*(emobility[indlocate]+(emobility[indlocate+1]-emobility[indlocate])*(abs(efield)-indlocate))
-    difegrid=1.0*(ediffusion[indlocate]+((ediffusion[indlocate+1]-ediffusion[indlocate])*(abs(efield)-indlocate)))
-    sourceegrid=1.0*(esourcee[indlocate]+(esourcee[indlocate+1]-esourcee[indlocate])*(abs(efield)-indlocate))
+    mobegrid=-1.0*(emobility[indlocate]+(emobility[indlocate+1]-emobility[indlocate])*(abs(efield)-indlocate))/gasdens
+    difegrid=1.0*(ediffusion[indlocate]+((ediffusion[indlocate+1]-ediffusion[indlocate])*(abs(efield)-indlocate)))/gasdens
+    sourceegrid=1.0*(esourcee[indlocate]+(esourcee[indlocate+1]-esourcee[indlocate])*(abs(efield)-indlocate))*gasdens/100
     mobigrid=1.0*(imobility[indlocate]+(imobility[indlocate+1]-imobility[indlocate])*(abs(efield)-indlocate))
     difigrid=1.0*idiffusion[indlocate]+((idiffusion[indlocate+1]-idiffusion[indlocate])*(abs(efield)-indlocate))
+    
+   
+   #Advection and Diffusion-------------------------------------------------------
+   #==============================================================================
+    ndentemp=np.zeros((ns,ngrid0+2),float)
+    ndentemp[0]=ndensity[0,:].copy()
+    ndentemp[1]=ndensity[1,:].copy()   
+    ndentemp[0,0]=ndentemp[0,0]-(sig_e_left)/dx; ndentemp[0,-1]=ndentemp[0,-1]-(sig_e_right)/dx  ;ndentemp[1,0]=ndentemp[1,0]-(sig_i_left)/dx;ndentemp[1,-1]=ndentemp[1,-1]-(sig_i_right)/dx #mirror boundary condition
+    
+    difOperatorElectron=SparseContinuityOperator(difegrid,dx,dt,0*efield*mobegrid)
+    difOperatorIon=SparseContinuityOperator(difigrid,dx,dt,0*efield*mobigrid)
+    ndentemp[0,1:-1]=la.spsolve(difOperatorElectron,ndentemp[0])[1:-1].copy()
+    ndentemp[1,1:-1]=la.spsolve(difOperatorIon,ndentemp[1])[1:-1].copy()
+    ndentemp[0,0]=0.; ndentemp[0,-1]=0.  ;ndentemp[1,0]=0.;ndentemp[1,-1]=0. #mirror boundary condition
+    
+    
+    difOperatorElectron1=SparseContinuityOperator(0*difegrid,dx,dt,efield*mobegrid)
+    difOperatorIon1=SparseContinuityOperator(0*difigrid,dx,dt,efield*mobigrid)
+    ndensity[0,1:-1]=la.spsolve(difOperatorElectron1,ndentemp[0])[1:-1].copy()
+    ndensity[1,1:-1]=la.spsolve(difOperatorIon1,ndentemp[1])[1:-1].copy()
+    ndensity[ndensity<1000]=1000.
 
-    #---------------------Flux Correction----------------------------------------------------------------------------------------------
-    #----------------------------------------------------------------------------------------------------------------------------------
-    velocitye=np.zeros(ngrid0+6,float)
-    velocityi=np.zeros(ngrid0+6,float)
-    rhoe=np.zeros(ngrid0+6,float)
-    rhoi=np.zeros(ngrid0+6,float)
-    velocitye[2:ngrid0+4]=mobegrid*efield
-    velocityi[2:ngrid0+4]=mobigrid*efield
-    rhoe[3:ngrid0+3]=ndensity[0,1:-1].copy()
-    rhoi[3:ngrid0+3]=ndensity[1,1:-1].copy()
-    
-    Avelocitye=np.zeros(ngrid0+3,float)
-    Avelocityi=np.zeros(ngrid0+3,float)
-    Avelocitye=0.5*(velocitye[1:ngrid0+4]+velocitye[2:ngrid0+5])
-    Avelocityi=0.5*(velocityi[1:ngrid0+4]+velocityi[2:ngrid0+5])
-            #step1-------------------------------#time calculation
-    flowe=(0.5*(velocitye[1:ngrid0+4]*rhoe[1:ngrid0+4]+velocitye[2:ngrid0+5]*rhoe[2:ngrid0+5])-0.5*abs(Avelocitye[:])*(rhoe[2:ngrid0+5]-rhoe[1:ngrid0+4]))*dt
-    flowi=(0.5*(velocityi[1:ngrid0+4]*rhoi[1:ngrid0+4]+velocityi[2:ngrid0+5]*rhoi[2:ngrid0+5])-0.5*abs(Avelocityi[:])*(rhoi[2:ngrid0+5]-rhoi[1:ngrid0+4]))*dt
-            #Step2--------------------------------
-    fhighe=((7.0/12)*(velocitye[1:ngrid0+4]*rhoe[1:ngrid0+4]+velocitye[2:ngrid0+5]*rhoe[2:ngrid0+5])-(1.0/12)*(velocityi[0:ngrid0+3]*rhoi[0:ngrid0+3]+velocityi[3:ngrid0+6]*rhoi[3:ngrid0+6]))*dt
-    fhighi=((7.0/12)*(velocityi[1:ngrid0+4]*rhoi[1:ngrid0+4]+velocityi[2:ngrid0+5]*rhoi[2:ngrid0+5])-(1.0/12)*(velocityi[0:ngrid0+3]*rhoi[0:ngrid0+3]+velocityi[3:ngrid0+6]*rhoi[3:ngrid0+6]))*dt
-            #step3--------------------------------
-    adife=fhighe-flowe
-    adifi=fhighi-flowi
-            #step4--------------------------------
-    qtde=np.zeros(ngrid0+6,float)
-    qtdi=np.zeros(ngrid0+6,float)
-    qtde[2:ngrid0+4]=ndensity[0,:]-(flowe[1:ngrid0+3]-flowe[0:ngrid0+2])/dx
-    qtdi[2:ngrid0+4]=ndensity[1,:]-(flowi[1:ngrid0+3]-flowi[0:ngrid0+2])/dx
-    
-            #step5--------------------------------
-    signne=np.sign(adife)
-    signni=np.sign(adifi)
-    ace=signne*np.maximum(np.zeros(ngrid0+3,float),np.minimum(abs(adife),np.minimum(signne*(qtde[3:]-qtde[2:-1])*dx,signne*(qtde[1:-2]-qtde[:-3])*dx)))
-    aci=signni*np.maximum(np.zeros(ngrid0+3,float),np.minimum(abs(adifi),np.minimum(signni*(qtdi[3:]-qtdi[2:-1])*dx,signni*(qtdi[1:-2]-qtdi[:-3])*dx)))
 
-            #step6--------------------------------
-    ndene=qtde[2:ngrid0+4]-(ace[1:ngrid0+3]-ace[0:ngrid0+2])/dx
-    ndeni=qtdi[2:ngrid0+4]-(aci[1:ngrid0+3]-aci[0:ngrid0+2])/dx
-        
-        #diffusion and source term
-    ndentemp=np.zeros((ns,ngrid0+4),float)
-    difetemp=np.zeros(ngrid0+4,float)
-    difitemp=np.zeros(ngrid0+4,float)
-    ndentemp[0,1:-1]=ndensity[0,:].copy()
-    ndentemp[1,1:-1]=ndensity[1,:].copy()
-    difetemp[1:-1]=difegrid[:].copy()
-    difitemp[1:-1]=difigrid[:].copy()
-    ndene[1:-1]=ndene[1:-1]+(  sourceegrid[1:-1]*abs(ndene[1:-1]) +((difetemp[3:-1]-difetemp[1:-3])/(2.0*dx))*((ndentemp[0,3:-1]-ndentemp[0,1:-3])/(2.0*dx))+difetemp[2:-2]*(ndentemp[0,3:-1]-2*ndentemp[0,2:-2]+ndentemp[0,1:-3])/(dx*dx)  )*dt
-    ndeni[1:-1]=ndeni[1:-1]+(  sourceegrid[1:-1]*abs(ndene[1:-1]) +((difitemp[3:-1]-difitemp[1:-3])/(2.0*dx))*((ndentemp[1,3:-1]-ndentemp[1,1:-3])/(2.0*dx))+difitemp[2:-2]*(ndentemp[0,3:-1]-2*ndentemp[0,2:-2]+ndentemp[0,1:-3])/(dx*dx)  )*dt
-    ndensity[0,1:-1]=ndene[1:-1].copy()
-    ndensity[1,1:-1]=ndeni[1:-1].copy()
+    #Source and sink
+    #=============================================================================
+    #source
+    etemperature=abs((ee/Kboltz)*difegrid/mobegrid)
+    reverserate=8.1*10**(-13)*(etemperature/300)**(-0.64)
+    decrementt=reverserate[1:-1]*ndensity[0,1:-1]*ndensity[1,1:-1]*dt
+    #ndensity[0,1:-1]=ndensity[0,1:-1]-decrementt
+    #ndensity[1,1:-1]=ndensity[1,1:-1]-decrementt
     
-    ndensity[ndensity<1000]=1000
-    #time calculation
+    ndensity[0,1:-1]=ndensity[0,1:-1]+1.0*(  sourceegrid[1:-1]*abs(ndensity[0,1:-1])*abs((gasdens-ndensity[1,1:-1])/gasdens)) * dt 
+    ndensity[1,1:-1]=ndensity[1,1:-1]+1.0*(  sourceegrid[1:-1]*abs(ndensity[0,1:-1])*abs((gasdens-ndensity[1,1:-1])/gasdens)) * dt
+    
     #charge accumulation at surface of dielectric
-    #-----------------------------------------------------------------------------------------------------
-    efluxleft=-0.5*(ndene[0]+ndene[1])*(mobegrid[1])*efield[1]
+    #=========================================================================================
+    efluxleft=-0.5*(ndensity[0,1]+ndensity[0,2])*(mobegrid[1])*efield[1]
     if efluxleft<0:
         efluxleft=0
     sig_e_left= sig_e_left+dt*(efluxleft-10*sig_e_left-10**(-10)*sig_e_left*sig_e_right)
     
-    efluxright=0.5*(ndene[-1]+ndene[-2])*(mobegrid[-2])*efield[-2]
+    efluxright=0.5*(ndensity[0,-2]+ndensity[0,-3])*(mobegrid[-2])*efield[-2]
     if efluxright<0:
         efluxright=0
     sig_e_right=sig_e_right+dt*(efluxright-10*sig_e_right-10**(-10)*sig_e_left*sig_e_right)
     
-    ifluxleft=-(1+0.01)*0.5*(ndeni[0]+ndeni[1])*(mobigrid[1])*efield[1]
+    ifluxleft=-(1+0.01)*0.5*(ndensity[1,1]+ndensity[1,2])*(mobigrid[1])*efield[1]
     if ifluxleft<0:
         ifluxleft=0
-    sig_i_left=sig_i_left+dt*(ifluxleft-10**(-10)*sig_i_left*sig_i_right)
-    ifluxright=(1+0.01)*0.5*(ndeni[-1]+ndeni[-2])*(mobigrid[-2])*efield[-2]
+    sig_i_left=0*(sig_i_left+dt*(ifluxleft-10**(-1)*sig_i_left*sig_i_right))
+    ifluxright=(1+0.01)*0.5*(ndensity[1,-2]+ndensity[1,-3])*(mobigrid[-2])*efield[-2]
     if ifluxright<0:
         ifluxright=0
-    sig_i_right=sig_i_right+dt*(ifluxright-10**(-10)*sig_i_left*sig_i_right)
-    #print (sig_e_left,sig_e_right,sig_i_left,sig_i_right)plasma_5000k_Fast_1
+    sig_i_right=0*(sig_i_right+dt*(ifluxright-10**(-1)*sig_i_left*sig_i_right))
+    #print (sig_e_left,sig_e_right,sig_i_left,sig_i_right)
     
-    ndensity[0,0]=0.5*(ndensity[0,1]+ndensity[0,2])+(sig_e_left)/dx
-    ndensity[0,-1]=0.5*(ndensity[0,-2]+ndensity[0,-3])+(sig_e_right)/dx    
-    ndensity[1,0]=0.5*(ndensity[1,1]+ndensity[1,2])+(sig_i_left)/dx
-    ndensity[1,-1]=0.5*(ndensity[1,-2]+ndensity[1,-3])+(sig_i_right)/dx
-    #dt=dt127e3
-    #tymestep2+=1
+    ndensity[0,0]=0.5*(ndensity[0,1]+ndensity[0,2])+1.*(sig_e_left)/dx
+    ndensity[0,-1]=0.5*(ndensity[0,-2]+ndensity[0,-3])+1.*(sig_e_right)/dx    
+    ndensity[1,0]=0.5*(ndensity[1,1]+ndensity[1,2])+1.*(sig_i_left)/dx
+    ndensity[1,-1]=0.5*(ndensity[1,-2]+ndensity[1,-3])+1.*(sig_i_right)/dx    
     
-    
+    #adaptive time stepping==================================================================
     mobsta=0.5*(mobegrid[1:]+mobegrid[:-1])
     difsta=0.5*(difegrid[1:]+difegrid[:-1])
     eefsta=0.5*(efield[1:]+efield[:-1])/townsendunit
     gstability=max(abs(mobsta*(efield[1:]-efield[:-1])/(dx*townsendunit)+eefsta*(mobegrid[1:]-mobegrid[:-1])/dx+mobsta*eefsta/(2*dx)      +4*difsta/(dx*dx) +(difegrid[1:]-difegrid[:-1])/(dx*dx)))
-    dt=1.0/(gstability)    
+    dt=100.0/(1*gstability)
     
-    if (tymeStep % 1000 == 0): #and leftPot>1080 ):
+    #printing and saving the data============================================================
+    f = open('finaldata/new.txt', 'ab')
+    if (tymeStep % 1000 == 0 ): #and leftPot>1080 ):
         #print (efluxleft,ifluxleft,efluxright,ifluxright)
+        print(max(etemperature))
         #print()
-        f = open('testing.txt', 'ab')
-        np.savetxt(f, ndensity[0,:])
-        np.savetxt(f, ndensity[1,:])
-        np.savetxt(f, netcharge)
-        np.savetxt(f, efield)
-        np.savetxt(f, potentl);
-        f.close()
-#        fourPlots((ndensity[0,:],ndensity[1,:]),'ndensity',netcharge,'netcharge',potentl[180:510],'electric potential',efield,'')
+        #np.savetxt(f, ndensity[0,:])
+        #np.savetxt(f, ndensity[1,:])
+        #np.savetxt(f, netcharge)
+        #np.savetxt(f, efield)
+        #np.savetxt(f, potentl);
+        #if (tymeStep % 1000 == 0 ): #and leftPot>1080 ):
+        #f.close()
+        fourPlots((ndensity[0,5:-5],ndensity[1,5:-5]),'ndensity',netcharge,'netcharge',potentl,'electric potential',efield,'')
+#        print(ndensity[0,:5],ndensity[1,:5])
+#        print(ndensity[0,-5:],ndensity[1,-5:])
         #print('eleft', efluxleft, 'eritht', efluxright, 'ileft', ifluxleft, 'iright', ifluxright)
         #print('eleft', efield[2], 'eritht', efield[-2], 'ileft', efield[2], 'iright', efield[-2])
         #print(ndensity[0,100],ndensity[1,100])
-        #print(dt)
+        print(dt)
