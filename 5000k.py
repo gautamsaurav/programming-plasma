@@ -82,7 +82,6 @@ def SparseContinuityOperator(dif,dx,dt,vi,k1=-1,k2=0,k3=1):
     return (sparse.dia_matrix(([d1,d2,d3],[k1,k2,k3]),shape=(nx,nx)).tocsc() )
 
 
-
 parameterSize=996       
 (emobility,ediffusion,esourcee,imobility,idiffusion) = readBoltzmannParameters(parameterSize,'output.txt')
 
@@ -101,7 +100,7 @@ wd2=nwd2*dx                 #making wd2 as exact multiple of dx
 inelec=width*10**(-3)+wd1+wd2#total interelectrode separation
 ngrid=int(ngrid0+2+nwd1+nwd2)    #total number of grid points(2 dielectrics +gas medium + all edge points)
 #--------------------------------------------------------------------------------------------------------------
-volt=2000.0    #Interelectrode voltage (peak not RMS)
+volt=1100.0    #Interelectrode voltage (peak not RMS)
 gasdens=2.504e25          #number density of gas at NTP (unit: m^-3)
 dt=1.0e-9 #small tyme interval
 frequencySource = 40000 #30KHz
@@ -142,6 +141,11 @@ ndensity=1000*np.random.rand(2,ngrid0+2)
 oo=1
 tymestep2=0.0
 tyme=0.0
+ganne=0
+recordne=np.zeros((10000,302),float)
+recordni=np.zeros((10000,302),float)
+recordef=np.zeros((10000,302),float)
+recordv=np.zeros((10000,422),float)
 
 for tymeStep in range(1,numberOfSteps):
     tyme=tyme+dt
@@ -174,7 +178,7 @@ for tymeStep in range(1,numberOfSteps):
     indlocate=abs(efield[:]).astype(int)
     mobegrid=-1.0*(emobility[indlocate]+(emobility[indlocate+1]-emobility[indlocate])*(abs(efield)-indlocate))/gasdens
     difegrid=1.0*(ediffusion[indlocate]+((ediffusion[indlocate+1]-ediffusion[indlocate])*(abs(efield)-indlocate)))/gasdens
-    sourceegrid=1.0*(esourcee[indlocate]+(esourcee[indlocate+1]-esourcee[indlocate])*(abs(efield)-indlocate))*gasdens/100
+    sourceegrid=1.0*(esourcee[indlocate]+(esourcee[indlocate+1]-esourcee[indlocate])*(abs(efield)-indlocate))*gasdens
     mobigrid=1.0*(imobility[indlocate]+(imobility[indlocate+1]-imobility[indlocate])*(abs(efield)-indlocate))
     difigrid=1.0*idiffusion[indlocate]+((idiffusion[indlocate+1]-idiffusion[indlocate])*(abs(efield)-indlocate))
     
@@ -206,8 +210,8 @@ for tymeStep in range(1,numberOfSteps):
     etemperature=abs((ee/Kboltz)*difegrid/mobegrid)
     reverserate=8.1*10**(-13)*(etemperature/300)**(-0.64)
     decrementt=reverserate[1:-1]*ndensity[0,1:-1]*ndensity[1,1:-1]*dt
-    #ndensity[0,1:-1]=ndensity[0,1:-1]-decrementt
-    #ndensity[1,1:-1]=ndensity[1,1:-1]-decrementt
+    ndensity[0,1:-1]=ndensity[0,1:-1]-decrementt
+    ndensity[1,1:-1]=ndensity[1,1:-1]-decrementt
     
     ndensity[0,1:-1]=ndensity[0,1:-1]+1.0*(  sourceegrid[1:-1]*abs(ndensity[0,1:-1])*abs((gasdens-ndensity[1,1:-1])/gasdens)) * dt 
     ndensity[1,1:-1]=ndensity[1,1:-1]+1.0*(  sourceegrid[1:-1]*abs(ndensity[0,1:-1])*abs((gasdens-ndensity[1,1:-1])/gasdens)) * dt
@@ -244,13 +248,19 @@ for tymeStep in range(1,numberOfSteps):
     difsta=0.5*(difegrid[1:]+difegrid[:-1])
     eefsta=0.5*(efield[1:]+efield[:-1])/townsendunit
     gstability=max(abs(mobsta*(efield[1:]-efield[:-1])/(dx*townsendunit)+eefsta*(mobegrid[1:]-mobegrid[:-1])/dx+mobsta*eefsta/(2*dx)      +4*difsta/(dx*dx) +(difegrid[1:]-difegrid[:-1])/(dx*dx)))
-    dt=100.0/(1*gstability)
-    
+    #dt=1000.0/(1*gstability)
+    dt=10.00123e-7
+   
     #printing and saving the data============================================================
     f = open('finaldata/new.txt', 'ab')
     if (tymeStep % 1000 == 0 ): #and leftPot>1080 ):
         #print (efluxleft,ifluxleft,efluxright,ifluxright)
         print(max(etemperature))
+        ganne+=1
+        recordne[ganne,:]=ndensity[0,:]
+        recordni[ganne,:]=ndensity[0,:]
+        recordef[ganne,:]=efield
+        recordv[ganne,:]=potentl
         #print()
         #np.savetxt(f, ndensity[0,:])
         #np.savetxt(f, ndensity[1,:])
